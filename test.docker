@@ -1,0 +1,2 @@
+FROM golang:1.13.3-alpine AS go_psql_test
+RUN apk update && apk add curl make git gcc postgresql postgresql-dev libc-dev

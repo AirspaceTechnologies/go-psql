@@ -1,0 +1,32 @@
+version: "2.4"
+
+services:
+  db:
+    container_name: go_psql_db
+    image: postgres:10.6
+    volumes:
+      - ./healthcheck_postgres.sh:/usr/local/bin/healthcheck_postgres.sh
+    healthcheck:
+      test: [ "CMD", "healthcheck_postgres.sh" ]
+
+  test:
+    container_name: psql_test
+    build:
+      context: ./
+      dockerfile: test.docker
+    volumes:
+      - ~/go:/go
+      - .:/go/src/github.com/airspacetechnologies/go-tools/psql
+    working_dir: /go/src/github.com/airspacetechnologies/go-tools/psql
+    environment:
+      - DATABASE_URL=postgres://postgres@db:5432/go_psql_test?sslmode=disable
+      - GO111MODULE=on
+    command: sh -c "dropdb go_psql_test -h db -U postgres || echo 'db does not exist'
+      && createdb go_psql_test -h db -U postgres || echo 'db already exists'
+      && go test -cover || echo 'test failed'
+      && dropdb go_psql_test -h db -U postgres || echo 'db does not exist'"
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db
