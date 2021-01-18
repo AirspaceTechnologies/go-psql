@@ -5,7 +5,7 @@ services:
     container_name: go_psql_db
     image: postgres:10.6
     volumes:
-      - ./healthcheck_postgres.sh:/usr/local/bin/healthcheck_postgres.sh
+      - ./docker/healthcheck_postgres.sh:/usr/local/bin/healthcheck_postgres.sh
     healthcheck:
       test: [ "CMD", "healthcheck_postgres.sh" ]
 
@@ -13,7 +13,7 @@ services:
     container_name: psql_test
     build:
       context: ./
-      dockerfile: test.docker
+      dockerfile: docker/test.docker
     volumes:
       - ~/go:/go
       - .:/go/src/github.com/airspacetechnologies/go-tools/psql
