@@ -8,6 +8,7 @@ services:
       - ./docker/healthcheck_postgres.sh:/usr/local/bin/healthcheck_postgres.sh
     healthcheck:
       test: [ "CMD", "healthcheck_postgres.sh" ]
+      interval: 5s
 
   test:
     container_name: psql_test
