@@ -7,8 +7,22 @@ import (
 	"github.com/lib/pq"
 )
 
+type BulkInserter struct {
+	client  *Client
+	errFunc ModelErrorFunc
+}
+
+func (c *Client) BulkInserter() BulkInserter {
+	return BulkInserter{client: c}
+}
+
+func (c *Client) BulkInsert(p BulkProvider) error {
+	return c.BulkInserter().BulkInsert(p)
+}
+
 // Unlike the other Client funcs this executes immediately and does not return a Query that you Exec() on
-func (c *Client) BulkInsert(p BulkProvider, errFunc ModelErrorFunc) error {
+func (bi BulkInserter) BulkInsert(p BulkProvider) error {
+	c := bi.client
 	m := p.NextModel()
 	if m == nil {
 		return errors.New("no models to insert")
@@ -34,6 +48,7 @@ func (c *Client) BulkInsert(p BulkProvider, errFunc ModelErrorFunc) error {
 		if col == "id" {
 			continue
 		}
+
 		cols = append(cols, col)
 		fieldIdxs = append(fieldIdxs, i)
 	}
@@ -79,8 +94,8 @@ func (c *Client) BulkInsert(p BulkProvider, errFunc ModelErrorFunc) error {
 
 		_, err = stmt.Exec(attrs...)
 		if err != nil {
-			if errFunc != nil {
-				errFunc(m, err)
+			if bi.errFunc != nil {
+				bi.errFunc(m, err)
 			}
 
 			continue
@@ -103,6 +118,11 @@ func (c *Client) BulkInsert(p BulkProvider, errFunc ModelErrorFunc) error {
 	return nil
 }
 
+func (bi BulkInserter) WithModelErrFunc(errFunc ModelErrorFunc) BulkInserter {
+	bi.errFunc = errFunc
+	return bi
+}
+
 func (c *Client) MonitorBulkInsertChannel(ch chan Model, errFunc ModelErrorFunc) error {
 	for {
 		m, ok := <-ch
@@ -110,7 +130,8 @@ func (c *Client) MonitorBulkInsertChannel(ch chan Model, errFunc ModelErrorFunc)
 			return nil
 		}
 
-		err := c.BulkInsert(NewChannelModelProvider(m, ch), errFunc)
+		bi := c.BulkInserter().WithModelErrFunc(errFunc)
+		err := bi.BulkInsert(NewChannelModelProvider(m, ch))
 		if err != nil {
 			return err
 		}

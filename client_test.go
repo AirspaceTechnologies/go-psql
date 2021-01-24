@@ -1,5 +1,3 @@
-// +build albatross
-
 package psql
 
 import (
@@ -461,7 +459,7 @@ func TestChannelModelProvider_NextModel(t *testing.T) {
 		t.Fatal("expected next model to be nil")
 	}
 
-	close(p.Channel)
+	close(ch)
 
 	if m := p.NextModel(); m != nil {
 		t.Fatal("expected next model to be nil")

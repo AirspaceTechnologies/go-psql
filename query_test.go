@@ -1,5 +1,3 @@
-// +build albatross
-
 package psql
 
 import (
