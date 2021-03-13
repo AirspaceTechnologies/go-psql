@@ -9,13 +9,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 )
 
 var (
-	NonceByteSize       = 12   // standard nonce size for GCM cipher
-	EncryptionKey       string // must be 128, 192 or 256 bit, blank disables encryption
-	LogDecryptionErrors = false
+	NonceByteSize       = 12                           // standard nonce size for GCM cipher
+	EncryptionKey       string                         // must be 128, 192 or 256 bit, blank disables encryption
+	DecryptionErrorFunc func(interface{}, error) error // You can log or take other actions. The error returned will be returned from Scan function
 )
 
 /*
@@ -55,9 +54,8 @@ func (s *EncryptableString) Scan(value interface{}) error {
 	str, err := decrypt(src, key)
 	if err != nil {
 		s.String, s.Valid = "", false
-		// don't block the whole struct containing this EncryptableString from scanning just from decryption issues
-		if LogDecryptionErrors {
-			log.Printf("error decrypting during scan %v", err)
+		if DecryptionErrorFunc != nil {
+			return DecryptionErrorFunc(value, fmt.Errorf("error decrypting during scan %w", err))
 		}
 		return nil
 	}

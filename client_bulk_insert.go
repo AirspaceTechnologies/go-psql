@@ -28,7 +28,18 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 		return errors.New("no models to insert")
 	}
 
+	buff := make([]Model, 0, p.Cap()+1)
+	buff = append(buff, m)
+
 	tx, err := c.DB.Begin()
+	defer func() {
+		if err != nil && bi.errFunc != nil {
+			for _, m := range buff {
+				bi.errFunc(m, err)
+			}
+		}
+	}()
+
 	if err != nil {
 		return err
 	}
@@ -100,6 +111,8 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 
 			continue
 		}
+
+		buff = append(buff, m)
 	}
 
 	_, err = stmt.Exec()

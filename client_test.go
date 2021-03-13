@@ -20,8 +20,8 @@ func TestClient_Test(t *testing.T) {
 	}
 
 	defer func() {
-		c.Exec("drop table mock_models")
-		c.Close()
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
 	}()
 
 	m := &MockModel{
@@ -347,8 +347,8 @@ func TestClient_Quoting(t *testing.T) {
 	}
 
 	defer func() {
-		c.Exec(`drop table "table"`)
-		c.Close()
+		_, _ = c.Exec(`drop table "table"`)
+		_ = c.Close()
 	}()
 
 	ctx := context.Background()
@@ -478,8 +478,8 @@ func TestClient_BulkInsert(t *testing.T) {
 	}
 
 	defer func() {
-		c.Exec("drop table mock_models")
-		c.Close()
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
 	}()
 
 	models := []Model{

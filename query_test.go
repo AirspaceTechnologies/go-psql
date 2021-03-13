@@ -20,8 +20,8 @@ func TestQuery_Test(t *testing.T) {
 	}
 
 	defer func() {
-		c.Exec("drop table mock_models")
-		c.Close()
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
 	}()
 
 	tableName := "mock_models"
@@ -425,8 +425,8 @@ func TestQuery_And_Or(t *testing.T) {
 	}
 
 	defer func() {
-		c.Exec("drop table mock_models")
-		c.Close()
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
 	}()
 
 	seeds := []*MockModel{

@@ -21,8 +21,8 @@ func TestJsonObject_Test(t *testing.T) {
 	}
 
 	defer func() {
-		c.Exec("drop table mock_models")
-		c.Close()
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
 	}()
 
 	ctx := context.Background()
