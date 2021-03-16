@@ -1,4 +1,4 @@
-module github.com/airspacetechnologies/go-env
+module github.com/airspacetechnologies/go-psql
 
 go 1.14
 
