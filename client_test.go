@@ -2,6 +2,7 @@ package psql
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -546,12 +547,17 @@ func TestClient_BulkInsert(t *testing.T) {
 
 	results = nil
 
-	if err := c.Select("mock_models").Slice(ctx, &results); err != nil {
+	if err := c.Select("mock_models").OrderBy("string_field asc").Slice(ctx, &results); err != nil {
 		t.Fatalf("Select failed %v", err)
 	}
 
 	if len(results) != len(models) {
 		t.Fatalf("results returned incorrect amount, expected %v and got %v", len(models), len(results))
+	}
+
+	for i, result := range results {
+		require.Equal(t, fmt.Sprintf("test%v", i+1), result.StringField)
+		require.Equal(t, NewNullString("test"), result.NullStringField)
 	}
 
 	// Clear data for next test
@@ -581,5 +587,166 @@ func TestClient_BulkInsert(t *testing.T) {
 
 	if len(results) != len(models)-1 {
 		t.Fatalf("results returned incorrect amount, expected %v and got %v", len(models)-1, len(results))
+	}
+}
+
+func TestClient_EmbeddedModelSlice(t *testing.T) {
+	type EmbeddedMockModel struct {
+		StringField string `sql:"string_field"` // will not override embedded
+		MockModel
+		FloatField float64 `sql:"float_field"` // will override embedded
+	}
+
+	c := NewClient(nil)
+
+	if err := c.Start(""); err != nil {
+		t.Fatalf("Failed to start %v", err)
+	}
+
+	if _, err := c.Exec(modelsTable); err != nil {
+		t.Fatalf("failed to create table %v", err)
+	}
+
+	defer func() {
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
+	}()
+
+	m := &MockModel{
+		StringField:     "test",
+		NullStringField: NewNullString("test"),
+		IntField:        5,
+		FloatField:      4.5,
+		BoolField:       true,
+		TimeField:       time.Now(),
+	}
+
+	ctx := context.Background()
+
+	// Insert
+	if err := c.Insert(ctx, m); err != nil {
+		t.Fatalf("error inserting %v", err)
+	}
+
+	if m.ID < 1 {
+		t.Fatalf("insert did not set id")
+	}
+
+	var results []*EmbeddedMockModel
+
+	if err := c.Select("mock_models").Slice(ctx, &results); err != nil {
+		t.Fatalf("Select failed %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("results returned incorrect amount, expected 1 and got %v", len(results))
+	}
+
+	result := results[0]
+
+	if result.ID != m.ID {
+		t.Fatalf("ids do not match (%v and %v)", result.ID, m.ID)
+	}
+
+	if result.MockModel.StringField != m.StringField ||
+		result.StringField != "" || // overridden in embedded struct
+		result.IntField != m.IntField ||
+		result.MockModel.IntField != m.IntField ||
+		result.FloatField != m.FloatField ||
+		result.MockModel.FloatField != 0 || // overridden in main struct
+		result.BoolField != m.BoolField ||
+		!result.NullStringField.Valid {
+		t.Fatalf("result does not match expect (%v and %v)", result, m)
+	}
+
+	result = &EmbeddedMockModel{}
+	if err := c.Select("mock_models").Scan(ctx, result); err != nil {
+		t.Fatalf("Select failed %v", err)
+	}
+
+	if result.ID != m.ID {
+		t.Fatalf("ids do not match (%v and %v)", result.ID, m.ID)
+	}
+
+	if result.MockModel.StringField != m.StringField ||
+		result.StringField != "" || // overridden in embedded struct
+		result.IntField != m.IntField ||
+		result.MockModel.IntField != m.IntField ||
+		result.FloatField != m.FloatField ||
+		result.MockModel.FloatField != 0 || // overridden in main struct
+		result.BoolField != m.BoolField ||
+		!result.NullStringField.Valid {
+		t.Fatalf("result does not match expect (%v and %v)", result, m)
+	}
+}
+
+func TestClient_EmbeddedModelInsert(t *testing.T) {
+	type EmbeddedMockModel struct {
+		StringField string `sql:"string_field"` // will not override embedded
+		MockModel
+		FloatField float64 `sql:"float_field"` // will override embedded
+	}
+
+	c := NewClient(nil)
+
+	if err := c.Start(""); err != nil {
+		t.Fatalf("Failed to start %v", err)
+	}
+
+	if _, err := c.Exec(modelsTable); err != nil {
+		t.Fatalf("failed to create table %v", err)
+	}
+
+	defer func() {
+		_, _ = c.Exec("drop table mock_models")
+		_ = c.Close()
+	}()
+
+	m := &EmbeddedMockModel{
+		StringField: "will be overridden",
+		MockModel: MockModel{
+			StringField:     "test",
+			NullStringField: NewNullString("test"),
+			IntField:        5,
+			FloatField:      4.5,
+			BoolField:       true,
+			TimeField:       time.Now(),
+		},
+		FloatField: 5.5,
+	}
+
+	ctx := context.Background()
+
+	// Insert
+	if err := c.Insert(ctx, m); err != nil {
+		t.Fatalf("error inserting %v", err)
+	}
+
+	if m.ID < 1 {
+		t.Fatalf("insert did not set id")
+	}
+
+	var results []*MockModel
+
+	if err := c.Select("mock_models").Slice(ctx, &results); err != nil {
+		t.Fatalf("Select failed %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("results returned incorrect amount, expected 1 and got %v", len(results))
+	}
+
+	result := results[0]
+
+	if result.ID != m.ID {
+		t.Fatalf("ids do not match (%v and %v)", result.ID, m.ID)
+	}
+
+	if result.StringField != m.MockModel.StringField ||
+		result.IntField != m.IntField ||
+		result.FloatField != m.FloatField ||
+		result.BoolField != m.BoolField ||
+		!result.NullStringField.Valid {
+		t.Fatalf("result does not match expect (%v and %v)", result, m)
 	}
 }

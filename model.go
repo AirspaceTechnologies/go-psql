@@ -49,7 +49,7 @@ func (h ModelHelper) Attributes(only ...string) map[string]interface{} {
 			continue
 		}
 
-		attrs[col] = v.Field(idx).Interface()
+		attrs[col] = fieldAt(v, idx).Interface()
 	}
 
 	return attrs

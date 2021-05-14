@@ -188,10 +188,10 @@ func scanStructs(rows *sql.Rows, baseType reflect.Type, sliceElemType reflect.Ty
 	return rows.Err()
 }
 
-func modelVals(v reflect.Value, fieldIdxs map[string]int, cols []string) []interface{} {
+func modelVals(v reflect.Value, fieldIdxs map[string][]int, cols []string) []interface{} {
 	var vals []interface{}
 	for _, col := range cols {
-		idx, ok := fieldIdxs[col]
+		idxs, ok := fieldIdxs[col]
 		if !ok {
 			// add blank val so that scan doesn't fail if the struct does not define a column returned
 			var val interface{}
@@ -199,7 +199,14 @@ func modelVals(v reflect.Value, fieldIdxs map[string]int, cols []string) []inter
 			continue
 		}
 
-		val := v.Field(idx)
+		val := fieldAt(v, idxs)
+		//if val.IsZero() {
+		//	// add blank val so that scan doesn't fail if the struct does not define a column returned
+		//	var blankV interface{}
+		//	vals = append(vals, &blankV)
+		//	continue
+		//}
+
 		if val.Kind() != reflect.Ptr {
 			val = val.Addr()
 		}
@@ -291,8 +298,17 @@ func scanAsStruct(t reflect.Type) bool {
 	return t.Implements(modelInterfaceType) || !t.Implements(scanInterfaceType)
 }
 
-func indexes(t reflect.Type) map[string]int {
-	fields := make(map[string]int)
+func fieldAt(v reflect.Value, idxs []int) reflect.Value {
+	f := v
+	for _, idx := range idxs {
+		f = f.Field(idx)
+	}
+
+	return f
+}
+
+func indexes(t reflect.Type) map[string][]int {
+	fields := make(map[string][]int)
 
 	if err := verifyStruct(t); err != nil {
 		return fields
@@ -304,10 +320,16 @@ func indexes(t reflect.Type) map[string]int {
 		col := tag.Get("sql")
 
 		if col == "" {
+			if f.Anonymous && f.Type.Kind() == reflect.Struct {
+				for jCol, js := range indexes(f.Type) {
+					fields[jCol] = append([]int{i}, js...)
+				}
+			}
+
 			continue
 		}
 
-		fields[col] = i
+		fields[col] = []int{i}
 	}
 
 	return fields
