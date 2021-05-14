@@ -77,8 +77,8 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 	}
 
 	attrs := make([]interface{}, 0, len(fieldIdxs))
-	for _, f := range fieldIdxs {
-		attrs = append(attrs, fieldAt(v, f).Interface())
+	for _, idxs := range fieldIdxs {
+		attrs = append(attrs, fieldAt(v, idxs).Interface())
 	}
 
 	_, err = stmt.Exec(attrs...)
@@ -99,8 +99,8 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 		}
 
 		attrs := make([]interface{}, 0, len(fieldIdxs))
-		for _, f := range fieldIdxs {
-			attrs = append(attrs, fieldAt(v, f).Interface())
+		for _, idxs := range fieldIdxs {
+			attrs = append(attrs, fieldAt(v, idxs).Interface())
 		}
 
 		_, err = stmt.Exec(attrs...)
