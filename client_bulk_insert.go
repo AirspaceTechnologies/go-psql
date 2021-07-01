@@ -52,16 +52,16 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 
 	colMap := indexes(t)
 
-	fieldIdxs := make([]int, 0, len(colMap))
+	fieldIdxs := make([][]int, 0, len(colMap))
 	cols := make([]string, 0, len(colMap))
 
-	for col, i := range colMap {
+	for col, idxs := range colMap {
 		if col == "id" {
 			continue
 		}
 
 		cols = append(cols, col)
-		fieldIdxs = append(fieldIdxs, i)
+		fieldIdxs = append(fieldIdxs, idxs)
 	}
 
 	baseStmt := pq.CopyIn(m.TableName(), cols...)
@@ -77,8 +77,8 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 	}
 
 	attrs := make([]interface{}, 0, len(fieldIdxs))
-	for _, f := range fieldIdxs {
-		attrs = append(attrs, v.Field(f).Interface())
+	for _, idxs := range fieldIdxs {
+		attrs = append(attrs, fieldAt(v, idxs).Interface())
 	}
 
 	_, err = stmt.Exec(attrs...)
@@ -99,8 +99,8 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 		}
 
 		attrs := make([]interface{}, 0, len(fieldIdxs))
-		for _, f := range fieldIdxs {
-			attrs = append(attrs, v.Field(f).Interface())
+		for _, idxs := range fieldIdxs {
+			attrs = append(attrs, fieldAt(v, idxs).Interface())
 		}
 
 		_, err = stmt.Exec(attrs...)

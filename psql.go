@@ -188,10 +188,12 @@ func scanStructs(rows *sql.Rows, baseType reflect.Type, sliceElemType reflect.Ty
 	return rows.Err()
 }
 
-func modelVals(v reflect.Value, fieldIdxs map[string]int, cols []string) []interface{} {
+// modelVals are for structs with a sql tag (Models) that support attributes getting scanned
+// in whatever order they appear in the query since they get mapped to the column name
+func modelVals(v reflect.Value, fieldIdxs map[string][]int, cols []string) []interface{} {
 	var vals []interface{}
 	for _, col := range cols {
-		idx, ok := fieldIdxs[col]
+		idxs, ok := fieldIdxs[col]
 		if !ok {
 			// add blank val so that scan doesn't fail if the struct does not define a column returned
 			var val interface{}
@@ -199,7 +201,7 @@ func modelVals(v reflect.Value, fieldIdxs map[string]int, cols []string) []inter
 			continue
 		}
 
-		val := v.Field(idx)
+		val := fieldAt(v, idxs)
 		if val.Kind() != reflect.Ptr {
 			val = val.Addr()
 		}
@@ -209,6 +211,7 @@ func modelVals(v reflect.Value, fieldIdxs map[string]int, cols []string) []inter
 	return vals
 }
 
+// structVals are for regular structs that get their fields scanned in order
 func structVals(v reflect.Value, cols []string) []interface{} {
 	var vals []interface{}
 	for idx := range cols {
@@ -291,8 +294,20 @@ func scanAsStruct(t reflect.Type) bool {
 	return t.Implements(modelInterfaceType) || !t.Implements(scanInterfaceType)
 }
 
-func indexes(t reflect.Type) map[string]int {
-	fields := make(map[string]int)
+// fieldAt retrieves a field at a given index path
+func fieldAt(v reflect.Value, idxs []int) reflect.Value {
+	f := v
+	for _, idx := range idxs {
+		f = f.Field(idx)
+	}
+
+	return f
+}
+
+// indexes takes in a type and returns a map of sql tag column names
+// to and array of ints that represent a path of indexes to the field
+func indexes(t reflect.Type) map[string][]int {
+	fields := make(map[string][]int)
 
 	if err := verifyStruct(t); err != nil {
 		return fields
@@ -304,10 +319,16 @@ func indexes(t reflect.Type) map[string]int {
 		col := tag.Get("sql")
 
 		if col == "" {
+			if f.Anonymous && f.Type.Kind() == reflect.Struct {
+				for jCol, js := range indexes(f.Type) {
+					fields[jCol] = append([]int{i}, js...)
+				}
+			}
+
 			continue
 		}
 
-		fields[col] = i
+		fields[col] = []int{i}
 	}
 
 	return fields
