@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 )
 
 // Client is a helper type to easily connect to PostgreSQL database instances.
@@ -46,146 +45,95 @@ func (c *Client) Stop() error {
 	return c.Close()
 }
 
-func (c *Client) Select(tableName string, cols ...string) *Query {
-	return SelectQuery(c, tableName, cols...)
+func (c *Client) Started() bool {
+	return c.DB != nil
 }
 
-// returns id into the model
-func (c *Client) Insert(ctx context.Context, v Model, cols ...string) error {
-	t := reflect.TypeOf(v)
-	if err := verifyPtr(t); err != nil {
-		return err
+func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+	if c.DB == nil {
+		return nil, errors.New("db is nil")
 	}
 
-	mh := &ModelHelper{v}
+	tx, err := c.DB.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
 
-	result, err := InsertQuery(c, v.TableName(), mh.Attributes(cols...)).Exec(ctx)
+	return &Tx{Tx: tx}, nil
+}
+
+func (c *Client) RunInTransaction(ctx context.Context, f func(context.Context, *Tx) error, opts *sql.TxOptions) error {
+	tx, err := c.BeginTx(ctx, opts)
 	if err != nil {
 		return err
 	}
 
-	return result.Scan(ctx, v)
+	var ranFunc bool
+	defer func() {
+		if !ranFunc {
+			// panicked in f still need to rollback transaction
+			tx.Rollback()
+		}
+	}()
+
+	err = f(ctx, tx)
+	ranFunc = true
+	if err != nil {
+		return tx.Rollback()
+	}
+
+	return tx.Commit()
+}
+
+func (c *Client) Select(tableName string, cols ...string) *Query {
+	return Select(c, tableName, cols...)
+}
+
+func (c *Client) Insert(ctx context.Context, v Model, cols ...string) error {
+	return Insert(ctx, c, v, cols...)
 }
 
 func (c *Client) Update(ctx context.Context, v Model, cols ...string) error {
-	mh := &ModelHelper{v}
-	id, err := mh.ID()
-	if err != nil {
-		return err
-	}
-	if id == 0 {
-		return errors.New("cannot update with id of 0")
-	}
-
-	_, err = UpdateQuery(c, v.TableName(), mh.Attributes(cols...)).Where(Attrs{"id": id}).Exec(ctx)
-
-	return err
+	return Update(ctx, c, v, cols...)
 }
 
 func (c *Client) Delete(ctx context.Context, v Model) (int64, error) {
-	mh := &ModelHelper{v}
-
-	id, err := mh.ID()
-	if err != nil {
-		return 0, err
-	}
-	if id == 0 {
-		return 0, errors.New("cannot delete with id of 0")
-	}
-
-	result, err := DeleteQuery(c, v.TableName()).Where(Attrs{"id": id}).Exec(ctx)
-
-	return result.RowsAffected, err
+	return Delete(ctx, c, v)
 }
 
-func (c *Client) Save(ctx context.Context, v Model) error {
-	mh := &ModelHelper{v}
-	id, err := mh.ID()
-	if err != nil {
-		return err
-	}
-
-	if id == 0 {
-		return c.Insert(ctx, v)
-	}
-
-	return c.Update(ctx, v)
+func (c *Client) Save(ctx context.Context, v Model, cols ...string) error {
+	return Save(ctx, c, v, cols...)
 }
 
 func (c *Client) UpdateAll(table string, attrs Attrs) *Query {
-	return UpdateQuery(c, table, attrs)
+	return UpdateAll(c, table, attrs)
 }
 
 func (c *Client) DeleteAll(table string) *Query {
-	return DeleteQuery(c, table)
+	return DeleteAll(c, table)
 }
 
 func (c *Client) RawSelect(ctx context.Context, outSlicePtr interface{}, q string, args ...interface{}) error {
-	r, err := c.RawQuery(ctx, q, args...)
-	if err != nil {
-		return err
-	}
-	return r.Slice(ctx, outSlicePtr)
+	return RawSelect(ctx, c, outSlicePtr, q, args...)
 }
 
 func (c *Client) RawQuery(ctx context.Context, q string, args ...interface{}) (*QueryResult, error) {
-	var r QueryResult
-	rows, err := c.QueryContext(ctx, q, args...)
-	r.Rows = rows
-	return &r, err
+	return RawQuery(ctx, c, q, args...)
 }
 
 // Returning Queries
 // The following scan all values back into the struct from the row
 
 func (c *Client) InsertReturning(ctx context.Context, v Model, cols ...string) error {
-	t := reflect.TypeOf(v)
-	if err := verifyPtr(t); err != nil {
-		return err
-	}
-
-	mh := &ModelHelper{v}
-
-	return InsertQuery(c, v.TableName(), mh.Attributes(cols...)).Returning("*").Scan(ctx, v)
+	return InsertReturning(ctx, c, v, cols...)
 }
 
 func (c *Client) UpdateReturning(ctx context.Context, v Model, cols ...string) error {
-	t := reflect.TypeOf(v)
-	if err := verifyPtr(t); err != nil {
-		return err
-	}
-
-	mh := &ModelHelper{v}
-
-	id, err := mh.ID()
-	if err != nil {
-		return err
-	}
-
-	if id == 0 {
-		return errors.New("cannot update with id of 0")
-	}
-
-	q := UpdateQuery(c, v.TableName(), mh.Attributes(cols...)).Where(Attrs{"id": id})
-	return q.Returning("*").Scan(ctx, v)
+	return UpdateReturning(ctx, c, v, cols...)
 }
 
 func (c *Client) DeleteReturning(ctx context.Context, v Model) error {
-	t := reflect.TypeOf(v)
-	if err := verifyPtr(t); err != nil {
-		return err
-	}
-
-	id, err := ModelHelper{v}.ID()
-	if err != nil {
-		return err
-	}
-
-	if id == 0 {
-		return errors.New("cannot delete with id of 0")
-	}
-
-	return DeleteQuery(c, v.TableName()).Where(Attrs{"id": id}).Returning("*").Scan(ctx, v)
+	return DeleteReturning(ctx, c, v)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

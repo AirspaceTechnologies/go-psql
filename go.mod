@@ -1,6 +1,6 @@
 module github.com/airspacetechnologies/go-psql
 
-go 1.14
+go 1.16
 
 require (
 	github.com/lib/pq v1.9.0
