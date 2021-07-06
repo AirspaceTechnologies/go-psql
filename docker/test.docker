@@ -1,2 +1,13 @@
-FROM golang:1.13.3-alpine AS go_psql_test
-RUN apk update && apk add curl make git gcc postgresql postgresql-dev libc-dev
+FROM golang:1.16-alpine AS go_psql_test
+RUN apk add --update \
+        curl \
+        git \
+        mercurial \
+        go \
+        gcc \
+        g++ \
+        make \
+        libc-dev \
+        postgresql \
+        postgresql-dev && \
+    rm -rf /var/cache/apk/*

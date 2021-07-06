@@ -24,7 +24,7 @@ services:
       - GO111MODULE=on
     command: sh -c "dropdb go_psql_test -h db -U postgres || echo 'db does not exist'
       && createdb go_psql_test -h db -U postgres || echo 'db already exists'
-      && go test -cover || echo 'test failed'
+      && (go test -race -coverprofile=cover.out ./... && go tool cover -html=cover.out -o cover.html) || echo 'test failed'
       && dropdb go_psql_test -h db -U postgres || echo 'db does not exist'"
     depends_on:
       db:

@@ -17,7 +17,7 @@ type Query struct {
 	conditions []*condition           // stores conditions for where clause
 	values     map[string]interface{} // stores values for insert or update
 	columns    []string               // stores columns for select
-	client     *Client
+	client     QueryClient
 	ors        []*Query
 	ands       []*Query
 	orderBys   []string
@@ -91,7 +91,7 @@ Delete and Update return RowsAffected unless the Returning() function is called 
 func (q *Query) Exec(ctx context.Context) (*QueryResult, error) {
 	var r QueryResult
 
-	if q.client == nil || q.client.DB == nil {
+	if q.client == nil || !q.client.Started() {
 		return &r, fmt.Errorf("client or db is nil")
 	}
 
@@ -145,7 +145,7 @@ func (q *Query) Scan(ctx context.Context, ptr interface{}) error {
 
 // SELECT
 
-func SelectQuery(c *Client, tableName string, cols ...string) *Query {
+func SelectQuery(c QueryClient, tableName string, cols ...string) *Query {
 	return &Query{
 		client:    c,
 		action:    "select",
@@ -163,7 +163,7 @@ func (q *Query) execSelect(ctx context.Context) (*sql.Rows, error) {
 
 // INSERT
 
-func InsertQuery(c *Client, tableName string, attrs map[string]interface{}) *Query {
+func InsertQuery(c QueryClient, tableName string, attrs map[string]interface{}) *Query {
 	return &Query{
 		client:    c,
 		action:    "insert",
@@ -185,7 +185,7 @@ func (q *Query) execInsert(ctx context.Context) (*sql.Rows, error) {
 
 // UPDATE
 
-func UpdateQuery(c *Client, tableName string, attrs map[string]interface{}) *Query {
+func UpdateQuery(c QueryClient, tableName string, attrs map[string]interface{}) *Query {
 	return &Query{
 		client:    c,
 		action:    "update",
@@ -221,7 +221,7 @@ func (q *Query) execUpdateR(ctx context.Context) (*sql.Rows, error) {
 
 // DELETE
 
-func DeleteQuery(c *Client, tableName string) *Query {
+func DeleteQuery(c QueryClient, tableName string) *Query {
 	return &Query{
 		client:    c,
 		action:    "delete",
@@ -493,7 +493,6 @@ func (r *QueryResult) Scan(ctx context.Context, ptr interface{}) error {
 	if r.Rows == nil {
 		return errors.New("result rows is nil")
 	}
-
 	defer r.Close()
 
 	if !r.Rows.Next() {
