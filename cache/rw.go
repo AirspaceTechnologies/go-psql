@@ -76,20 +76,21 @@ func (c *rwCache) Copy(ctx context.Context) map[interface{}]interface{} {
 }
 
 func (c *rwCache) Prune(ctx context.Context) int {
-	keys := make([]interface{}, 0, len(c.m))
-	func() {
+	keys := func() []interface{} {
 		c.mut.RLock()
 		defer c.mut.RUnlock()
 
+		keys := make([]interface{}, 0, len(c.m))
 		for k, v := range c.m {
 			if ctx.Err() != nil {
-				return
+				return nil
 			}
 
 			if v.Expired() {
 				keys = append(keys, k)
 			}
 		}
+		return keys
 	}()
 
 	if ctx.Err() != nil {
