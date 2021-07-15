@@ -16,12 +16,12 @@ func TestJsonObject_Test(t *testing.T) {
 		t.Fatalf("Failed to start %v", err)
 	}
 
-	if _, err := c.Exec(modelsTable); err != nil {
+	if _, err := c.ExecContext(context.Background(), modelsTable); err != nil {
 		t.Fatalf("failed to create table %v", err)
 	}
 
 	defer func() {
-		_, _ = c.Exec("drop table mock_models")
+		_, _ = c.ExecContext(context.Background(), "drop table mock_models")
 		_ = c.Close()
 	}()
 

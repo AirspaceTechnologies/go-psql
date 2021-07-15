@@ -8,11 +8,11 @@ import (
 
 func TestTx_CommitAndRollback(t *testing.T) {
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"insert 2 and delete 1 committed": {
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				m1 := &MockModel{IntField: 1}
 				err := c.Insert(context.Background(), m1)
 				require.Nil(t, err)
@@ -49,7 +49,7 @@ func TestTx_CommitAndRollback(t *testing.T) {
 			},
 		},
 		"insert update then rollback": {
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				m1 := &MockModel{IntField: 1}
 				err := c.Insert(context.Background(), m1)
 				require.Nil(t, err)
@@ -95,12 +95,12 @@ func TestTx_CommitAndRollback(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -113,7 +113,7 @@ func TestTx_CommitAndRollback(t *testing.T) {
 }
 
 func TestTx_Select(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -126,12 +126,12 @@ func TestTx_Select(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"select values": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -153,7 +153,7 @@ func TestTx_Select(t *testing.T) {
 		},
 		"select models": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -199,12 +199,12 @@ func TestTx_Select(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -218,11 +218,11 @@ func TestTx_Select(t *testing.T) {
 
 func TestTx_Insert(t *testing.T) {
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"insert 2 models": {
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -256,12 +256,12 @@ func TestTx_Insert(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -274,7 +274,7 @@ func TestTx_Insert(t *testing.T) {
 }
 
 func TestTx_Update(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -287,12 +287,12 @@ func TestTx_Update(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"update a model": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -323,12 +323,12 @@ func TestTx_Update(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -341,7 +341,7 @@ func TestTx_Update(t *testing.T) {
 }
 
 func TestTx_Delete(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -354,12 +354,12 @@ func TestTx_Delete(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"delete a model": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -388,12 +388,12 @@ func TestTx_Delete(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -406,7 +406,7 @@ func TestTx_Delete(t *testing.T) {
 }
 
 func TestTx_Save(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -419,12 +419,12 @@ func TestTx_Save(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"update a model": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -444,7 +444,7 @@ func TestTx_Save(t *testing.T) {
 		},
 		"insert a model": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -472,12 +472,12 @@ func TestTx_Save(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -490,7 +490,7 @@ func TestTx_Save(t *testing.T) {
 }
 
 func TestTx_UpdateAll(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -504,12 +504,12 @@ func TestTx_UpdateAll(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"update models": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -539,12 +539,12 @@ func TestTx_UpdateAll(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -557,7 +557,7 @@ func TestTx_UpdateAll(t *testing.T) {
 }
 
 func TestTx_DeleteAll(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -571,12 +571,12 @@ func TestTx_DeleteAll(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"update models": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -606,12 +606,12 @@ func TestTx_DeleteAll(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(), modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -624,7 +624,7 @@ func TestTx_DeleteAll(t *testing.T) {
 }
 
 func TestTx_RawSelect(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -637,12 +637,12 @@ func TestTx_RawSelect(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"select values": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -663,7 +663,7 @@ func TestTx_RawSelect(t *testing.T) {
 		},
 		"select models": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -708,12 +708,12 @@ func TestTx_RawSelect(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -726,7 +726,7 @@ func TestTx_RawSelect(t *testing.T) {
 }
 
 func TestTx_RawQuery(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -739,12 +739,12 @@ func TestTx_RawQuery(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"update models": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -776,12 +776,12 @@ func TestTx_RawQuery(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -795,11 +795,11 @@ func TestTx_RawQuery(t *testing.T) {
 
 func TestTx_InsertReturning(t *testing.T) {
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"insert 2 models": {
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -835,12 +835,12 @@ func TestTx_InsertReturning(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -853,7 +853,7 @@ func TestTx_InsertReturning(t *testing.T) {
 }
 
 func TestTx_UpdateReturning(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -866,12 +866,12 @@ func TestTx_UpdateReturning(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"update a model": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -910,12 +910,12 @@ func TestTx_UpdateReturning(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 
@@ -928,7 +928,7 @@ func TestTx_UpdateReturning(t *testing.T) {
 }
 
 func TestTx_DeleteReturning(t *testing.T) {
-	before := func(t *testing.T, c *Client) {
+	before := func(t *testing.T, c Client) {
 		ctx := context.Background()
 		models := []*MockModel{
 			{IntField: 4},
@@ -941,12 +941,12 @@ func TestTx_DeleteReturning(t *testing.T) {
 	}
 
 	tcs := map[string]struct {
-		Before func(*testing.T, *Client)
-		Run    func(*testing.T, *Client)
+		Before func(*testing.T, Client)
+		Run    func(*testing.T, Client)
 	}{
 		"delete a model": {
 			Before: before,
-			Run: func(t *testing.T, c *Client) {
+			Run: func(t *testing.T, c Client) {
 				ctx := context.Background()
 
 				err := c.RunInTransaction(ctx, func(ctx context.Context, tx *Tx) error {
@@ -976,12 +976,12 @@ func TestTx_DeleteReturning(t *testing.T) {
 				t.Fatalf("Failed to start %v", err)
 			}
 
-			if _, err := c.Exec(modelsTable); err != nil {
+			if _, err := c.ExecContext(context.Background(),modelsTable); err != nil {
 				t.Fatalf("failed to create table %v", err)
 			}
 
 			defer func() {
-				_, _ = c.Exec("drop table mock_models")
+				_, _ = c.ExecContext(context.Background(),"drop table mock_models")
 				_ = c.Close()
 			}()
 

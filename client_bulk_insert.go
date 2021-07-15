@@ -1,6 +1,7 @@
 package psql
 
 import (
+	"context"
 	"errors"
 	"reflect"
 
@@ -8,20 +9,20 @@ import (
 )
 
 type BulkInserter struct {
-	client  *Client
+	client  Client
 	errFunc ModelErrorFunc
 }
 
-func (c *Client) BulkInserter() BulkInserter {
+func (c *client) BulkInserter() BulkInserter {
 	return BulkInserter{client: c}
 }
 
-func (c *Client) BulkInsert(p BulkProvider) error {
-	return c.BulkInserter().BulkInsert(p)
+func (c *client) BulkInsert(ctx context.Context, p BulkProvider) error {
+	return c.BulkInserter().BulkInsert(ctx, p)
 }
 
-// Unlike the other Client funcs this executes immediately and does not return a Query that you Exec() on
-func (bi BulkInserter) BulkInsert(p BulkProvider) error {
+// Unlike the other client funcs this executes immediately and does not return a Query that you Exec() on
+func (bi BulkInserter) BulkInsert(ctx context.Context, p BulkProvider) error {
 	c := bi.client
 	m := p.NextModel()
 	if m == nil {
@@ -31,7 +32,7 @@ func (bi BulkInserter) BulkInsert(p BulkProvider) error {
 	buff := make([]Model, 0, p.Cap()+1)
 	buff = append(buff, m)
 
-	tx, err := c.DB.Begin()
+	tx, err := c.BeginTx(ctx, nil)
 	defer func() {
 		if err != nil && bi.errFunc != nil {
 			for _, m := range buff {
@@ -136,7 +137,7 @@ func (bi BulkInserter) WithModelErrFunc(errFunc ModelErrorFunc) BulkInserter {
 	return bi
 }
 
-func (c *Client) MonitorBulkInsertChannel(ch chan Model, errFunc ModelErrorFunc) error {
+func (c *client) MonitorBulkInsertChannel(ctx context.Context, ch chan Model, errFunc ModelErrorFunc) error {
 	for {
 		m, ok := <-ch
 		if !ok {
@@ -144,7 +145,7 @@ func (c *Client) MonitorBulkInsertChannel(ch chan Model, errFunc ModelErrorFunc)
 		}
 
 		bi := c.BulkInserter().WithModelErrFunc(errFunc)
-		err := bi.BulkInsert(NewChannelModelProvider(m, ch))
+		err := bi.BulkInsert(ctx, NewChannelModelProvider(m, ch))
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ type BulkProvider interface {
 	Cap() int
 }
 
-// Bulk provider for channels, see '*Client MonitorBulkInsertChannel()' for usage example
+// Bulk provider for channels, see '*client MonitorBulkInsertChannel()' for usage example
 type ChannelModelProvider struct {
 	first   Model
 	Channel <-chan Model

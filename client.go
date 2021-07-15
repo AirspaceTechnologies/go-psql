@@ -8,25 +8,59 @@ import (
 	"os"
 )
 
-// Client is a helper type to easily connect to PostgreSQL database instances.
+type Client interface {
+	QueryClient
+
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error)
+	RunInTransaction(ctx context.Context, f func(context.Context, *Tx) error, opts *sql.TxOptions) error
+
+	Select(tableName string, cols ...string) *Query
+	Insert(ctx context.Context, v Model, cols ...string) error
+	Update(ctx context.Context, v Model, cols ...string) error
+	Delete(ctx context.Context, v Model) (int64, error)
+	Save(ctx context.Context, v Model, cols ...string) error
+
+	UpdateAll(table string, attrs Attrs) *Query
+	DeleteAll(table string) *Query
+
+	RawSelect(ctx context.Context, outSlicePtr interface{}, q string, args ...interface{}) error
+	RawQuery(ctx context.Context, q string, args ...interface{}) (*QueryResult, error)
+
+	InsertReturning(ctx context.Context, v Model, cols ...string) error
+	UpdateReturning(ctx context.Context, v Model, cols ...string) error
+	DeleteReturning(ctx context.Context, v Model) error
+
+	Start(driverName string) error
+	Stop() error
+	Close() error
+
+	BulkInserter() BulkInserter
+	BulkInsert(ctx context.Context, p BulkProvider) error
+	MonitorBulkInsertChannel(ctx context.Context, ch chan Model, errFunc ModelErrorFunc) error
+
+	Name() string
+	Status(ctx context.Context) error
+}
+
+// client is a helper type to easily connect to PostgreSQL database instances.
 //
 // It satisfies the `health.Metric` interface.
-type Client struct {
+type client struct {
 	*sql.DB
 	connStr string
 }
 
-func NewClient(cfg *Config) *Client {
+func NewClient(cfg *Config) Client {
 	connStr := os.Getenv("DATABASE_URL")
 
 	if connStr == "" && cfg != nil {
 		connStr = cfg.connString()
 	}
 
-	return &Client{connStr: connStr}
+	return &client{connStr: connStr}
 }
 
-func (c *Client) Start(driverName string) error {
+func (c *client) Start(driverName string) error {
 	if driverName == "" {
 		driverName = "postgres"
 	}
@@ -41,15 +75,15 @@ func (c *Client) Start(driverName string) error {
 	return nil
 }
 
-func (c *Client) Stop() error {
+func (c *client) Stop() error {
 	return c.Close()
 }
 
-func (c *Client) Started() bool {
+func (c *client) Started() bool {
 	return c.DB != nil
 }
 
-func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+func (c *client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
 	if c.DB == nil {
 		return nil, errors.New("db is nil")
 	}
@@ -62,7 +96,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{Tx: tx}, nil
 }
 
-func (c *Client) RunInTransaction(ctx context.Context, f func(context.Context, *Tx) error, opts *sql.TxOptions) error {
+func (c *client) RunInTransaction(ctx context.Context, f func(context.Context, *Tx) error, opts *sql.TxOptions) error {
 	tx, err := c.BeginTx(ctx, opts)
 	if err != nil {
 		return err
@@ -85,54 +119,54 @@ func (c *Client) RunInTransaction(ctx context.Context, f func(context.Context, *
 	return tx.Commit()
 }
 
-func (c *Client) Select(tableName string, cols ...string) *Query {
+func (c *client) Select(tableName string, cols ...string) *Query {
 	return Select(c, tableName, cols...)
 }
 
-func (c *Client) Insert(ctx context.Context, v Model, cols ...string) error {
+func (c *client) Insert(ctx context.Context, v Model, cols ...string) error {
 	return Insert(ctx, c, v, cols...)
 }
 
-func (c *Client) Update(ctx context.Context, v Model, cols ...string) error {
+func (c *client) Update(ctx context.Context, v Model, cols ...string) error {
 	return Update(ctx, c, v, cols...)
 }
 
-func (c *Client) Delete(ctx context.Context, v Model) (int64, error) {
+func (c *client) Delete(ctx context.Context, v Model) (int64, error) {
 	return Delete(ctx, c, v)
 }
 
-func (c *Client) Save(ctx context.Context, v Model, cols ...string) error {
+func (c *client) Save(ctx context.Context, v Model, cols ...string) error {
 	return Save(ctx, c, v, cols...)
 }
 
-func (c *Client) UpdateAll(table string, attrs Attrs) *Query {
+func (c *client) UpdateAll(table string, attrs Attrs) *Query {
 	return UpdateAll(c, table, attrs)
 }
 
-func (c *Client) DeleteAll(table string) *Query {
+func (c *client) DeleteAll(table string) *Query {
 	return DeleteAll(c, table)
 }
 
-func (c *Client) RawSelect(ctx context.Context, outSlicePtr interface{}, q string, args ...interface{}) error {
+func (c *client) RawSelect(ctx context.Context, outSlicePtr interface{}, q string, args ...interface{}) error {
 	return RawSelect(ctx, c, outSlicePtr, q, args...)
 }
 
-func (c *Client) RawQuery(ctx context.Context, q string, args ...interface{}) (*QueryResult, error) {
+func (c *client) RawQuery(ctx context.Context, q string, args ...interface{}) (*QueryResult, error) {
 	return RawQuery(ctx, c, q, args...)
 }
 
 // Returning Queries
 // The following scan all values back into the struct from the row
 
-func (c *Client) InsertReturning(ctx context.Context, v Model, cols ...string) error {
+func (c *client) InsertReturning(ctx context.Context, v Model, cols ...string) error {
 	return InsertReturning(ctx, c, v, cols...)
 }
 
-func (c *Client) UpdateReturning(ctx context.Context, v Model, cols ...string) error {
+func (c *client) UpdateReturning(ctx context.Context, v Model, cols ...string) error {
 	return UpdateReturning(ctx, c, v, cols...)
 }
 
-func (c *Client) DeleteReturning(ctx context.Context, v Model) error {
+func (c *client) DeleteReturning(ctx context.Context, v Model) error {
 	return DeleteReturning(ctx, c, v)
 }
 
@@ -142,15 +176,15 @@ func (c *Client) DeleteReturning(ctx context.Context, v Model) error {
 
 // Name returns `"psql"`.
 //
-// To better identify the `Client` may be wrapped in a prefixed metric:
+// To better identify the `client` may be wrapped in a prefixed metric:
 //
 //     health.PrefixedMetric{Prefix: "MyDatabaseName", BaseMetric: c}
 //
-func (c *Client) Name() string {
+func (c *client) Name() string {
 	return "psql"
 }
 
 // Status calls the client's `Ping` method to determine connectivity.
-func (c *Client) Status(ctx context.Context) error {
+func (c *client) Status(ctx context.Context) error {
 	return c.PingContext(ctx)
 }

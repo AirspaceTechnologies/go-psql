@@ -9,22 +9,18 @@ import (
 	"time"
 )
 
-type CacheClient interface {
-	RawSelect(ctx context.Context, outSlicePtr interface{}, q string, args ...interface{}) error
-}
-
 type cacheKey string
 
 type cacheClient struct {
+	Client
 	cache  cache.Cache
-	client QueryClient
 	exp    time.Duration
 }
 
-func NewCacheClient(cache cache.Cache, client QueryClient, exp time.Duration) CacheClient {
+func NewCacheClient(cache cache.Cache, client Client, exp time.Duration) Client {
 	return &cacheClient{
 		cache:  cache,
-		client: client,
+		Client: client,
 		exp:    exp,
 	}
 }
@@ -40,7 +36,7 @@ func (c *cacheClient) RawSelect(ctx context.Context, outSlicePtr interface{}, q 
 		return nil
 	}
 
-	if err := RawSelect(ctx, c.client, outSlicePtr, q, args...); err != nil {
+	if err := c.Client.RawSelect(ctx, outSlicePtr, q, args...); err != nil {
 		return err
 	}
 
@@ -49,7 +45,7 @@ func (c *cacheClient) RawSelect(ctx context.Context, outSlicePtr interface{}, q 
 		exp = time.Now().Add(c.exp)
 	}
 
-	c.cache.Set(k, reflect.ValueOf(outSlicePtr).Elem(), exp)
+	c.cache.Set(k, reflect.ValueOf(outSlicePtr).Elem().Interface(), exp)
 
 	return nil
 }
